@@ -1,0 +1,32 @@
+{% extends 'base.html' %}
+{% block page_title %}{{ match.title }}{% endblock %}
+{% block content %}
+<div class="content-card">
+    <div class="mb-3">
+        <div class="small text-secondary">{{ match.starts_at.strftime('%d/%m/%Y %H:%M') }}</div>
+        <h2 class="h5 mt-1">{{ match.opponent or 'Adversário a definir' }}</h2>
+        <div class="text-secondary">{{ match.location or 'Local a definir' }}</div>
+    </div>
+    <form method="post" action="{{ url_for('matches.save_attendance', match_id=match.id) }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <div class="table-responsive">
+            <table class="table align-middle">
+                <thead><tr><th>Jogador</th><th>Confirmado</th><th>Falta</th><th>Pendente</th></tr></thead>
+                <tbody>
+                {% for player in players %}
+                    {% set attendance = attendance_map.get(player.id) %}
+                    <tr>
+                        <td>{{ player.name }}</td>
+                        <td><input class="form-check-input" type="radio" name="player_{{ player.id }}" value="confirmado" {% if attendance and attendance.status == 'confirmado' %}checked{% endif %}></td>
+                        <td><input class="form-check-input" type="radio" name="player_{{ player.id }}" value="falta" {% if attendance and attendance.status == 'falta' %}checked{% endif %}></td>
+                        <td><input class="form-check-input" type="radio" name="player_{{ player.id }}" value="pendente" {% if not attendance or attendance.status == 'pendente' %}checked{% endif %}></td>
+                    </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        <button class="btn btn-primary">Salvar presença</button>
+    </form>
+</div>
+{% endblock %}
+

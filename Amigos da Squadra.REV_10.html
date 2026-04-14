@@ -1,0 +1,993 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestão do Time - Controle Financeiro Completo</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <style>
+        @keyframes slideIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.05); } }
+        .animate-slide-in { animation: slideIn 0.3s ease-out; }
+        .animate-pulse-custom { animation: pulse 2s infinite; }
+        .modal-overlay { background: rgba(0, 0, 0, 0.5); backdrop-filter: blur(4px); }
+        .pdf-report { font-family: 'Arial', sans-serif; padding: 40px; background: white; }
+        .pdf-report h1 { color: #1e40af; font-size: 28px; margin-bottom: 10px; }
+        .pdf-report h2 { color: #1e3a8a; font-size: 20px; margin-top: 20px; margin-bottom: 10px; border-bottom: 2px solid #3b82f6; padding-bottom: 5px; }
+        .pdf-report .header { text-align: center; margin-bottom: 30px; }
+        .pdf-report .summary-card { background: #f3f4f6; padding: 15px; border-radius: 10px; margin-bottom: 20px; }
+        .pdf-report table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+        .pdf-report th, .pdf-report td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+        .pdf-report th { background: #3b82f6; color: white; }
+        .pdf-report .positive { color: #16a34a; font-weight: bold; }
+        .pdf-report .negative { color: #dc2626; font-weight: bold; }
+        .pdf-report .footer { text-align: center; margin-top: 30px; font-size: 12px; color: #6b7280; }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+    <script type="text/babel">
+        const { useState, useEffect, useRef } = React;
+
+        function App() {
+            // ========== LISTAS PRÉ-CADASTRADAS ==========
+            const MENSALISTAS_FIXOS = [
+                { nome: "Andrey", telefone: "11999990001", tipo: "mensal" },
+                { nome: "Bruno Lima", telefone: "11999990002", tipo: "mensal" },
+                { nome: "Cicero", telefone: "11999990003", tipo: "mensal" },
+                { nome: "Cleiber", telefone: "11999990004", tipo: "mensal" },
+                { nome: "Eliseu", telefone: "11999990005", tipo: "mensal" },
+                { nome: "Fabricio Hugo Souza", telefone: "11999990006", tipo: "mensal" },
+                { nome: "Felipe", telefone: "11999990007", tipo: "mensal" },
+                { nome: "Fernando", telefone: "11999990008", tipo: "mensal" },
+                { nome: "Giba", telefone: "11999990009", tipo: "mensal" },
+                { nome: "Gustavo Sorte", telefone: "11999990010", tipo: "mensal" },
+                { nome: "Gustavo Hofmann", telefone: "11999990011", tipo: "mensal" },
+                { nome: "Junior", telefone: "11999990012", tipo: "mensal" },
+                { nome: "Maceió", telefone: "11999990013", tipo: "mensal" },
+                { nome: "Marcão", telefone: "11999990014", tipo: "mensal" },
+                { nome: "Paulinho", telefone: "11999990015", tipo: "mensal" },
+                { nome: "Renan", telefone: "11999990016", tipo: "mensal" },
+                { nome: "Rick Goulard", telefone: "11999990017", tipo: "mensal" },
+                { nome: "Tito", telefone: "11999990018", tipo: "mensal" },
+                { nome: "Vilson", telefone: "11999990019", tipo: "mensal" }
+            ];
+
+            const AVULSOS_ROTINEIROS = [
+                { nome: "Carlos Alberto", telefone: "11988880001", tipo: "avulso" },
+                { nome: "Marcelo Silva", telefone: "11988880002", tipo: "avulso" },
+                { nome: "Rafael Souza", telefone: "11988880003", tipo: "avulso" },
+                { nome: "Thiago Santos", telefone: "11988880004", tipo: "avulso" },
+                { nome: "Rodrigo Lima", telefone: "11988880005", tipo: "avulso" },
+                { nome: "André Costa", telefone: "11988880006", tipo: "avulso" },
+                { nome: "Luiz Fernando", telefone: "11988880007", tipo: "avulso" },
+                { nome: "Paulo Henrique", telefone: "11988880008", tipo: "avulso" },
+                { nome: "Diego Alves", telefone: "11988880009", tipo: "avulso" },
+                { nome: "Bruno Henrique", telefone: "11988880010", tipo: "avulso" }
+            ];
+
+            const TODOS_JOGADORES = [...MENSALISTAS_FIXOS, ...AVULSOS_ROTINEIROS];
+
+            // ========== ESTADOS PRINCIPAIS ==========
+            const [abaAtiva, setAbaAtiva] = useState("receitas");
+            const [mostrarConfig, setMostrarConfig] = useState(false);
+            const [mostrarRelatorio, setMostrarRelatorio] = useState(false);
+            const [tipoRelatorio, setTipoRelatorio] = useState("mensal");
+            const [dataInicio, setDataInicio] = useState("");
+            const [dataFim, setDataFim] = useState("");
+            const [gerandoPDF, setGerandoPDF] = useState(false);
+            
+            const [anoSelecionado, setAnoSelecionado] = useState(new Date().getFullYear());
+            const [mesSelecionado, setMesSelecionado] = useState(new Date().getMonth());
+            
+            const meses = [
+                "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
+                "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"
+            ];
+
+            const reportRef = useRef(null);
+
+            // ========== CONFIGURAÇÕES ==========
+            const [configuracoes, setConfiguracoes] = useState(() => {
+                const saved = localStorage.getItem("time_configuracoes");
+                if (saved) return JSON.parse(saved);
+                return {
+                    valorMensal: 65,
+                    valorAvulso: 30,
+                    diaVencimento: 5,
+                    diasAntecedencia: 5,
+                    nomeTime: "Futebol Clube",
+                    telefoneAdmin: "5511999999999",
+                    pixKey: "time@futebol.com",
+                    mensagemRelatorio: "📊 *RELATÓRIO FINANCEIRO - {nomeTime}*\n\nPeríodo: {periodo}\n\n✅ *RESUMO:*\n💰 Total Recebido: R$ {totalRecebido}\n📉 Total Despesas: R$ {totalDespesas}\n💵 Saldo Final: R$ {saldo}\n\n📈 *DETALHES:*\n• Jogadores Pagos: {pagos}/{totalJogadores}\n• Percentual: {percentual}%\n\nAcesse o sistema para mais detalhes! ⚽",
+                    mensagemCobranca: "Olá {nome}! 👋\n\nSua mensalidade do {nomeTime} referente a {mes} está chegando! 🏃‍♂️⚽\n\n📅 Vencimento: Dia {vencimento}\n💰 Valor: R$ {valor}\n\n🔹 Chave PIX: {pixKey}\n\nPor favor, realizar o pagamento até a data de vencimento.\n\nAgradecemos a atenção! 🙏",
+                    mensagemPosJogo: "Olá {nome}! 👋\n\nObrigado por participar do jogo de {mes}! 🎉⚽\n\nValor da partida avulsa: R$ {valor}\n\n🔹 Chave PIX: {pixKey}\n\nQualquer dúvida, estamos à disposição! 💪"
+                };
+            });
+
+            // ========== DADOS POR MÊS ==========
+            const [dadosMensais, setDadosMensais] = useState(() => {
+                const saved = localStorage.getItem("time_dados_mensais");
+                if (saved) return JSON.parse(saved);
+                
+                const dadosIniciais = {};
+                const anoAtual = new Date().getFullYear();
+                
+                for (let ano = anoAtual - 1; ano <= anoAtual + 1; ano++) {
+                    for (let mes = 0; mes < 12; mes++) {
+                        const key = `${ano}-${mes}`;
+                        // Criar cópia dos jogadores para cada mês
+                        const jogadoresMes = TODOS_JOGADORES.map((j, index) => ({
+                            id: index + 1,
+                            nome: j.nome,
+                            telefone: j.telefone,
+                            tipo: j.tipo,
+                            pago: false,
+                            dataPagamento: null,
+                            ultimaCobranca: null
+                        }));
+                        
+                        dadosIniciais[key] = {
+                            jogadores: jogadoresMes,
+                            despesas: [],
+                            totalRecebido: 0,
+                            totalDespesas: 0,
+                            saldo: 0,
+                            fechado: false,
+                            dataFechamento: null
+                        };
+                    }
+                }
+                
+                return dadosIniciais;
+            });
+
+            // ========== DADOS DO MÊS ATUAL ==========
+            const currentKey = `${anoSelecionado}-${mesSelecionado}`;
+            const dadosAtuais = dadosMensais[currentKey] || {
+                jogadores: [],
+                despesas: [],
+                totalRecebido: 0,
+                totalDespesas: 0,
+                saldo: 0,
+                fechado: false,
+                dataFechamento: null
+            };
+
+            // ========== SALVAR NO LOCALSTORAGE ==========
+            useEffect(() => {
+                localStorage.setItem("time_dados_mensais", JSON.stringify(dadosMensais));
+            }, [dadosMensais]);
+
+            useEffect(() => {
+                localStorage.setItem("time_configuracoes", JSON.stringify(configuracoes));
+            }, [configuracoes]);
+
+            // ========== FUNÇÕES DO RELATÓRIO ==========
+            const gerarRelatorio = () => {
+                let dadosRelatorio = {
+                    periodo: "",
+                    totalRecebido: 0,
+                    totalDespesas: 0,
+                    saldo: 0,
+                    jogadoresPagos: 0,
+                    totalJogadores: 0,
+                    percentualPagos: 0,
+                    despesasPorCategoria: {},
+                    jogadoresPorTipo: { mensal: 0, avulso: 0 },
+                    pagosPorTipo: { mensal: 0, avulso: 0 },
+                    topDespesas: [],
+                    inadimplentes: []
+                };
+
+                if (tipoRelatorio === "mensal") {
+                    const dados = dadosMensais[`${anoSelecionado}-${mesSelecionado}`];
+                    if (dados) {
+                        dadosRelatorio.periodo = `${meses[mesSelecionado]} de ${anoSelecionado}`;
+                        dadosRelatorio.totalRecebido = dados.totalRecebido || 0;
+                        dadosRelatorio.totalDespesas = dados.totalDespesas || 0;
+                        dadosRelatorio.saldo = (dados.totalRecebido || 0) - (dados.totalDespesas || 0);
+                        
+                        if (dados.jogadores) {
+                            dadosRelatorio.totalJogadores = dados.jogadores.length;
+                            dadosRelatorio.jogadoresPagos = dados.jogadores.filter(j => j.pago).length;
+                            dadosRelatorio.percentualPagos = (dadosRelatorio.jogadoresPagos / dadosRelatorio.totalJogadores) * 100;
+                            
+                            dadosRelatorio.jogadoresPorTipo.mensal = dados.jogadores.filter(j => j.tipo === "mensal").length;
+                            dadosRelatorio.jogadoresPorTipo.avulso = dados.jogadores.filter(j => j.tipo === "avulso").length;
+                            
+                            dadosRelatorio.pagosPorTipo.mensal = dados.jogadores.filter(j => j.tipo === "mensal" && j.pago).length;
+                            dadosRelatorio.pagosPorTipo.avulso = dados.jogadores.filter(j => j.tipo === "avulso" && j.pago).length;
+                            
+                            dadosRelatorio.inadimplentes = dados.jogadores.filter(j => !j.pago).map(j => j.nome);
+                        }
+                        
+                        if (dados.despesas) {
+                            dados.despesas.forEach(d => {
+                                if (!dadosRelatorio.despesasPorCategoria[d.categoria]) {
+                                    dadosRelatorio.despesasPorCategoria[d.categoria] = 0;
+                                }
+                                dadosRelatorio.despesasPorCategoria[d.categoria] += d.valor;
+                            });
+                            dadosRelatorio.topDespesas = [...dados.despesas].sort((a,b) => b.valor - a.valor).slice(0,5);
+                        }
+                    }
+                } else if (tipoRelatorio === "anual") {
+                    dadosRelatorio.periodo = `Ano ${anoSelecionado}`;
+                    let mesesComDados = 0;
+                    
+                    for (let mes = 0; mes < 12; mes++) {
+                        const key = `${anoSelecionado}-${mes}`;
+                        const dados = dadosMensais[key];
+                        if (dados && (dados.totalRecebido > 0 || dados.totalDespesas > 0)) {
+                            mesesComDados++;
+                            dadosRelatorio.totalRecebido += dados.totalRecebido || 0;
+                            dadosRelatorio.totalDespesas += dados.totalDespesas || 0;
+                            
+                            if (dados.jogadores && mes === new Date().getMonth()) {
+                                dadosRelatorio.totalJogadores = dados.jogadores.length;
+                                dadosRelatorio.jogadoresPagos = dados.jogadores.filter(j => j.pago).length;
+                            }
+                        }
+                    }
+                    
+                    dadosRelatorio.saldo = dadosRelatorio.totalRecebido - dadosRelatorio.totalDespesas;
+                    dadosRelatorio.percentualPagos = dadosRelatorio.totalJogadores > 0 ? (dadosRelatorio.jogadoresPagos / dadosRelatorio.totalJogadores) * 100 : 0;
+                }
+
+                return dadosRelatorio;
+            };
+
+            const exportarPDF = async () => {
+                setGerandoPDF(true);
+                const dados = gerarRelatorio();
+                
+                const element = document.createElement('div');
+                element.innerHTML = `
+                    <div class="pdf-report">
+                        <div class="header">
+                            <div style="font-size: 48px; margin-bottom: 10px;">⚽</div>
+                            <h1>${configuracoes.nomeTime}</h1>
+                            <h2>RELATÓRIO FINANCEIRO</h2>
+                            <p style="color: #6b7280;">Período: ${dados.periodo}</p>
+                            <p style="color: #6b7280;">Gerado em: ${new Date().toLocaleString()}</p>
+                        </div>
+                        
+                        <div class="summary-card">
+                            <h3 style="margin-top: 0;">📊 RESUMO EXECUTIVO</h3>
+                            <table style="width: 100%;">
+                                <tr><td><strong>💰 Total Recebido</strong></td><td class="positive">R$ ${dados.totalRecebido.toFixed(2)}</td></tr>
+                                <tr><td><strong>📉 Total Despesas</strong></td><td class="negative">R$ ${dados.totalDespesas.toFixed(2)}</td></tr>
+                                <tr><td><strong>💵 Saldo Final</strong></td><td class="${dados.saldo >= 0 ? 'positive' : 'negative'}">R$ ${dados.saldo.toFixed(2)}</td></tr>
+                                <tr><td><strong>👥 Jogadores Pagos</strong></td><td>${dados.jogadoresPagos}/${dados.totalJogadores} (${dados.percentualPagos.toFixed(1)}%)</td></tr>
+                            </table>
+                        </div>
+                        
+                        <h2>📈 ANÁLISE DE RECEITAS</h2>
+                        <table>
+                            <thead><tr><th>Indicador</th><th>Valor</th></tr></thead>
+                            <tbody>
+                                <tr><td>Total de Jogadores</td><td>${dados.totalJogadores}</td></tr>
+                                <tr><td>Mensalistas</td><td>${dados.jogadoresPorTipo?.mensal || 0}</td></tr>
+                                <tr><td>Avulsos</td><td>${dados.jogadoresPorTipo?.avulso || 0}</td></tr>
+                                <tr><td>Mensalistas Pagos</td><td>${dados.pagosPorTipo?.mensal || 0}</td></tr>
+                                <tr><td>Avulsos Pagos</td><td>${dados.pagosPorTipo?.avulso || 0}</td></tr>
+                            </tbody>
+                        </table>
+                        
+                        ${Object.keys(dados.despesasPorCategoria).length > 0 ? `
+                            <h2>💸 ANÁLISE DE DESPESAS</h2>
+                            <table>
+                                <thead><tr><th>Categoria</th><th>Valor</th></tr></thead>
+                                <tbody>
+                                    ${Object.entries(dados.despesasPorCategoria).map(([cat, valor]) => `
+                                        <tr><td>${cat}</td><td class="negative">R$ ${valor.toFixed(2)}</td></tr>
+                                    `).join('')}
+                                </tbody>
+                            </table>
+                        ` : ''}
+                        
+                        ${dados.inadimplentes && dados.inadimplentes.length > 0 ? `
+                            <h2>⚠️ INADIMPLENTES</h2>
+                            <ul>
+                                ${dados.inadimplentes.map(nome => `<li>${nome}</li>`).join('')}
+                            </ul>
+                        ` : ''}
+                        
+                        <div class="footer">
+                            <p>Chave PIX: ${configuracoes.pixKey}</p>
+                            <p>Relatório gerado automaticamente pelo Sistema de Gestão do Time</p>
+                        </div>
+                    </div>
+                `;
+                
+                const opt = {
+                    margin: [0.5, 0.5, 0.5, 0.5],
+                    filename: `relatorio_${configuracoes.nomeTime.replace(/\s/g, '_')}_${dados.periodo.replace(/\s/g, '_')}.pdf`,
+                    image: { type: 'jpeg', quality: 0.98 },
+                    html2canvas: { scale: 2, letterRendering: true },
+                    jsPDF: { unit: 'in', format: 'a4', orientation: 'portrait' }
+                };
+                
+                setTimeout(async () => {
+                    await html2pdf().set(opt).from(element).save();
+                    setGerandoPDF(false);
+                    alert("✅ PDF gerado com sucesso!");
+                }, 100);
+            };
+
+            const enviarWhatsApp = () => {
+                const dados = gerarRelatorio();
+                const mensagem = configuracoes.mensagemRelatorio
+                    .replace(/{nomeTime}/g, configuracoes.nomeTime)
+                    .replace(/{periodo}/g, dados.periodo)
+                    .replace(/{totalRecebido}/g, `R$ ${dados.totalRecebido.toFixed(2)}`)
+                    .replace(/{totalDespesas}/g, `R$ ${dados.totalDespesas.toFixed(2)}`)
+                    .replace(/{saldo}/g, `R$ ${dados.saldo.toFixed(2)}`)
+                    .replace(/{pagos}/g, dados.jogadoresPagos)
+                    .replace(/{totalJogadores}/g, dados.totalJogadores)
+                    .replace(/{percentual}/g, dados.percentualPagos.toFixed(1));
+                
+                const telefone = configuracoes.telefoneAdmin;
+                const url = `https://wa.me/${telefone}?text=${encodeURIComponent(mensagem)}`;
+                window.open(url, '_blank');
+            };
+
+            // ========== FUNÇÕES DE RECEITAS ==========
+            const adicionarJogador = (jogadorPreCadastrado = null) => {
+                if (dadosAtuais.fechado) {
+                    showMessage(`⚠️ Mês fechado! Não é possível adicionar jogadores.`, "error");
+                    return;
+                }
+                
+                let novoJogador;
+                if (jogadorPreCadastrado) {
+                    if (dadosAtuais.jogadores.some(j => j.nome === jogadorPreCadastrado.nome)) {
+                        showMessage(`❌ ${jogadorPreCadastrado.nome} já está na lista deste mês!`, "error");
+                        return;
+                    }
+                    novoJogador = {
+                        id: Date.now(),
+                        nome: jogadorPreCadastrado.nome,
+                        telefone: jogadorPreCadastrado.telefone,
+                        tipo: jogadorPreCadastrado.tipo,
+                        pago: false,
+                        dataPagamento: null,
+                        ultimaCobranca: null
+                    };
+                } else {
+                    if (!nome.trim()) {
+                        showMessage("⚠️ Informe o nome do jogador", "error");
+                        return;
+                    }
+                    novoJogador = {
+                        id: Date.now(),
+                        nome: nome.trim(),
+                        telefone: telefone.trim(),
+                        tipo,
+                        pago: false,
+                        dataPagamento: null,
+                        ultimaCobranca: null
+                    };
+                }
+                
+                setDadosMensais(prev => ({
+                    ...prev,
+                    [currentKey]: {
+                        ...prev[currentKey],
+                        jogadores: [...(prev[currentKey]?.jogadores || []), novoJogador]
+                    }
+                }));
+                
+                setNome("");
+                setTelefone("");
+                showMessage(`✅ ${novoJogador.nome} adicionado em ${meses[mesSelecionado]}/${anoSelecionado}!`);
+            };
+
+            const adicionarTodosMensalistas = () => {
+                if (dadosAtuais.fechado) {
+                    showMessage(`⚠️ Mês fechado!`, "error");
+                    return;
+                }
+                
+                let adicionados = 0;
+                MENSALISTAS_FIXOS.forEach(mensalista => {
+                    if (!dadosAtuais.jogadores.some(j => j.nome === mensalista.nome)) {
+                        const novoJogador = {
+                            id: Date.now() + adicionados,
+                            nome: mensalista.nome,
+                            telefone: mensalista.telefone,
+                            tipo: "mensal",
+                            pago: false,
+                            dataPagamento: null,
+                            ultimaCobranca: null
+                        };
+                        setDadosMensais(prev => ({
+                            ...prev,
+                            [currentKey]: {
+                                ...prev[currentKey],
+                                jogadores: [...(prev[currentKey]?.jogadores || []), novoJogador]
+                            }
+                        }));
+                        adicionados++;
+                    }
+                });
+                
+                showMessage(`✅ ${adicionados} mensalistas adicionados!`);
+            };
+
+            const togglePagamento = (id) => {
+                if (dadosAtuais.fechado) {
+                    showMessage(`⚠️ Mês fechado!`, "error");
+                    return;
+                }
+                
+                const lista = dadosAtuais.jogadores.map(j =>
+                    j.id === id ? { ...j, pago: !j.pago, dataPagamento: !j.pago ? new Date().toLocaleDateString() : null } : j
+                );
+                setDadosMensais(prev => ({ ...prev, [currentKey]: { ...prev[currentKey], jogadores: lista } }));
+                
+                const jogador = dadosAtuais.jogadores.find(j => j.id === id);
+                showMessage(`${jogador.nome} - ${!jogador.pago ? "✅ Pago" : "⏳ Pendente"}`);
+            };
+
+            const removerJogador = (id) => {
+                if (dadosAtuais.fechado) {
+                    showMessage(`⚠️ Mês fechado!`, "error");
+                    return;
+                }
+                
+                const jogador = dadosAtuais.jogadores.find(j => j.id === id);
+                if (window.confirm(`Remover ${jogador.nome} da lista de ${meses[mesSelecionado]}/${anoSelecionado}?`)) {
+                    setDadosMensais(prev => ({
+                        ...prev,
+                        [currentKey]: { ...prev[currentKey], jogadores: prev[currentKey].jogadores.filter(j => j.id !== id) }
+                    }));
+                    showMessage(`🗑️ ${jogador.nome} removido`);
+                }
+            };
+
+            const atualizarTelefone = (id, novoTelefone) => {
+                if (dadosAtuais.fechado) return;
+                setDadosMensais(prev => ({
+                    ...prev,
+                    [currentKey]: {
+                        ...prev[currentKey],
+                        jogadores: prev[currentKey].jogadores.map(j => j.id === id ? { ...j, telefone: novoTelefone } : j)
+                    }
+                }));
+            };
+
+            // ========== FUNÇÕES DE COBRANÇA ==========
+            const formatarTelefone = (telefone) => {
+                let numero = telefone.replace(/\D/g, '');
+                if (numero.length === 10) numero = '55' + numero;
+                if (numero.length === 11 && !numero.startsWith('55')) numero = '55' + numero;
+                return numero;
+            };
+
+            const enviarCobrancaMensal = (jogador) => {
+                if (!jogador.telefone) {
+                    showMessage(`⚠️ ${jogador.nome} não tem telefone!`, "error");
+                    return false;
+                }
+                const mensagem = configuracoes.mensagemCobranca
+                    .replace(/{nome}/g, jogador.nome)
+                    .replace(/{nomeTime}/g, configuracoes.nomeTime)
+                    .replace(/{mes}/g, meses[mesSelecionado])
+                    .replace(/{vencimento}/g, configuracoes.diaVencimento)
+                    .replace(/{valor}/g, configuracoes.valorMensal)
+                    .replace(/{pixKey}/g, configuracoes.pixKey);
+                const url = `https://wa.me/${formatarTelefone(jogador.telefone)}?text=${encodeURIComponent(mensagem)}`;
+                window.open(url, '_blank');
+                return true;
+            };
+
+            const enviarCobrancaAvulso = (jogador) => {
+                if (!jogador.telefone) {
+                    showMessage(`⚠️ ${jogador.nome} não tem telefone!`, "error");
+                    return false;
+                }
+                const mensagem = configuracoes.mensagemPosJogo
+                    .replace(/{nome}/g, jogador.nome)
+                    .replace(/{nomeTime}/g, configuracoes.nomeTime)
+                    .replace(/{mes}/g, meses[mesSelecionado])
+                    .replace(/{valor}/g, configuracoes.valorAvulso)
+                    .replace(/{pixKey}/g, configuracoes.pixKey);
+                const url = `https://wa.me/${formatarTelefone(jogador.telefone)}?text=${encodeURIComponent(mensagem)}`;
+                window.open(url, '_blank');
+                return true;
+            };
+
+            // ========== FUNÇÕES DE DESPESAS ==========
+            const [novaDespesa, setNovaDespesa] = useState({ nome: "", valor: "", categoria: "estrutura", data: new Date().toLocaleDateString() });
+            const [filtroDespesa, setFiltroDespesa] = useState("todas");
+            const [buscaDespesa, setBuscaDespesa] = useState("");
+
+            const adicionarDespesa = () => {
+                if (dadosAtuais.fechado) {
+                    showMessage(`⚠️ Mês fechado!`, "error");
+                    return;
+                }
+                if (!novaDespesa.nome.trim() || !novaDespesa.valor) return;
+                const despesa = {
+                    id: Date.now(),
+                    nome: novaDespesa.nome.trim(),
+                    valor: parseFloat(novaDespesa.valor),
+                    categoria: novaDespesa.categoria,
+                    data: new Date().toLocaleDateString(),
+                    pago: false,
+                    dataPagamento: null
+                };
+                setDadosMensais(prev => ({
+                    ...prev,
+                    [currentKey]: { ...prev[currentKey], despesas: [...(prev[currentKey]?.despesas || []), despesa] }
+                }));
+                setNovaDespesa({ nome: "", valor: "", categoria: "estrutura", data: new Date().toLocaleDateString() });
+                showMessage(`✅ Despesa adicionada!`);
+            };
+
+            const togglePagamentoDespesa = (id) => {
+                if (dadosAtuais.fechado) return;
+                const lista = dadosAtuais.despesas.map(d => d.id === id ? { ...d, pago: !d.pago, dataPagamento: !d.pago ? new Date().toLocaleDateString() : null } : d);
+                setDadosMensais(prev => ({ ...prev, [currentKey]: { ...prev[currentKey], despesas: lista } }));
+            };
+
+            const removerDespesa = (id) => {
+                if (dadosAtuais.fechado) return;
+                if (window.confirm(`Remover despesa?`)) {
+                    setDadosMensais(prev => ({ ...prev, [currentKey]: { ...prev[currentKey], despesas: prev[currentKey].despesas.filter(d => d.id !== id) } }));
+                }
+            };
+
+            // ========== ESTADOS DA UI ==========
+            const [nome, setNome] = useState("");
+            const [telefone, setTelefone] = useState("");
+            const [tipo, setTipo] = useState("mensal");
+            const [filtro, setFiltro] = useState("todos");
+            const [mensagem, setMensagem] = useState({ show: false, text: "", type: "success" });
+            const [busca, setBusca] = useState("");
+
+            useEffect(() => {
+                if (mensagem.show) {
+                    const timer = setTimeout(() => setMensagem({ ...mensagem, show: false }), 3000);
+                    return () => clearTimeout(timer);
+                }
+            }, [mensagem]);
+
+            const showMessage = (text, type = "success") => {
+                setMensagem({ show: true, text, type });
+            };
+
+            // ========== CÁLCULOS ==========
+            const totalReceber = dadosAtuais.jogadores?.reduce((acc, j) => acc + (j.tipo === "mensal" ? configuracoes.valorMensal : configuracoes.valorAvulso), 0) || 0;
+            const totalRecebido = dadosAtuais.totalRecebido || 0;
+            const totalDespesas = dadosAtuais.totalDespesas || 0;
+            const saldoFinal = dadosAtuais.saldo || 0;
+
+            const jogadoresFiltrados = dadosAtuais.jogadores?.filter(j => {
+                const matchBusca = j.nome.toLowerCase().includes(busca.toLowerCase());
+                if (!matchBusca) return false;
+                if (filtro === "pagos") return j.pago;
+                if (filtro === "pendentes") return !j.pago;
+                if (filtro === "mensal") return j.tipo === "mensal";
+                if (filtro === "avulso") return j.tipo === "avulso";
+                return true;
+            }) || [];
+
+            const despesasFiltradas = dadosAtuais.despesas?.filter(d => {
+                const matchBusca = d.nome.toLowerCase().includes(buscaDespesa.toLowerCase());
+                if (!matchBusca) return false;
+                if (filtroDespesa === "pagas") return d.pago;
+                if (filtroDespesa === "pendentes") return !d.pago;
+                return true;
+            }) || [];
+
+            const categorias = {
+                estrutura: "🏟️ Estrutura",
+                serviços: "🧤 Serviços",
+                manutenção: "👕 Manutenção",
+                outros: "📝 Outros"
+            };
+
+            // ========== MODAIS ==========
+            const ModalRelatorio = () => {
+                const dadosRelatorio = gerarRelatorio();
+                return (
+                    <div className="fixed inset-0 modal-overlay flex items-center justify-center z-50 p-4" onClick={() => setMostrarRelatorio(false)}>
+                        <div className="bg-white rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+                            <div className="bg-gradient-to-r from-blue-600 to-purple-600 px-6 py-4 sticky top-0 flex justify-between items-center">
+                                <h2 className="text-xl font-semibold text-white">📊 Relatório Financeiro</h2>
+                                <button onClick={() => setMostrarRelatorio(false)} className="text-white text-2xl">&times;</button>
+                            </div>
+                            <div className="p-6">
+                                <div className="mb-6 p-4 bg-gray-50 rounded-lg">
+                                    <h3 className="font-semibold mb-3">⚙️ Configurar Relatório</h3>
+                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                        <div>
+                                            <label className="block text-sm mb-1">Tipo</label>
+                                            <select value={tipoRelatorio} onChange={(e) => setTipoRelatorio(e.target.value)} className="w-full px-3 py-2 border rounded-lg">
+                                                <option value="mensal">📅 Mensal</option>
+                                                <option value="anual">📆 Anual</option>
+                                            </select>
+                                        </div>
+                                        {tipoRelatorio === "mensal" && (
+                                            <div>
+                                                <label className="block text-sm mb-1">Mês/Ano</label>
+                                                <div className="flex gap-2">
+                                                    <select value={mesSelecionado} onChange={(e) => setMesSelecionado(parseInt(e.target.value))} className="flex-1 px-3 py-2 border rounded-lg">
+                                                        {meses.map((m, i) => <option key={i} value={i}>{m}</option>)}
+                                                    </select>
+                                                    <select value={anoSelecionado} onChange={(e) => setAnoSelecionado(parseInt(e.target.value))} className="w-24 px-3 py-2 border rounded-lg">
+                                                        {[2023,2024,2025,2026].map(a => <option key={a} value={a}>{a}</option>)}
+                                                    </select>
+                                                </div>
+                                            </div>
+                                        )}
+                                        {tipoRelatorio === "anual" && (
+                                            <div>
+                                                <label className="block text-sm mb-1">Ano</label>
+                                                <select value={anoSelecionado} onChange={(e) => setAnoSelecionado(parseInt(e.target.value))} className="w-full px-3 py-2 border rounded-lg">
+                                                    {[2023,2024,2025,2026].map(a => <option key={a} value={a}>{a}</option>)}
+                                                </select>
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                                
+                                <div className="flex gap-3 mb-6">
+                                    <button onClick={exportarPDF} disabled={gerandoPDF} className="flex-1 py-3 bg-red-600 hover:bg-red-700 text-white rounded-lg font-semibold flex items-center justify-center gap-2">
+                                        {gerandoPDF ? "⏳ Gerando..." : "📄 Exportar PDF"}
+                                    </button>
+                                    <button onClick={enviarWhatsApp} className="flex-1 py-3 bg-green-600 hover:bg-green-700 text-white rounded-lg font-semibold flex items-center justify-center gap-2">
+                                        📱 Enviar WhatsApp
+                                    </button>
+                                </div>
+                                
+                                <div className="border rounded-lg p-4 bg-white">
+                                    <h3 className="font-semibold mb-3 text-center">📋 PRÉ-VISUALIZAÇÃO</h3>
+                                    <div className="text-sm">
+                                        <div className="text-center mb-4">
+                                            <div className="text-3xl mb-2">⚽</div>
+                                            <div className="font-bold text-lg">{configuracoes.nomeTime}</div>
+                                            <div className="text-gray-500">Período: {dadosRelatorio.periodo}</div>
+                                        </div>
+                                        <div className="grid grid-cols-2 gap-2 mb-4">
+                                            <div className="bg-green-50 p-3 rounded text-center">
+                                                <div className="text-xs text-green-600">💰 Receitas</div>
+                                                <div className="font-bold text-green-600">R$ {dadosRelatorio.totalRecebido.toFixed(2)}</div>
+                                            </div>
+                                            <div className="bg-red-50 p-3 rounded text-center">
+                                                <div className="text-xs text-red-600">📉 Despesas</div>
+                                                <div className="font-bold text-red-600">R$ {dadosRelatorio.totalDespesas.toFixed(2)}</div>
+                                            </div>
+                                            <div className={`${dadosRelatorio.saldo >= 0 ? 'bg-blue-50' : 'bg-orange-50'} p-3 rounded text-center col-span-2`}>
+                                                <div className="text-xs">💵 Saldo</div>
+                                                <div className={`font-bold ${dadosRelatorio.saldo >= 0 ? 'text-blue-600' : 'text-orange-600'}`}>R$ {dadosRelatorio.saldo.toFixed(2)}</div>
+                                            </div>
+                                        </div>
+                                        <div className="border-t pt-3">
+                                            <div className="flex justify-between text-xs mb-1">
+                                                <span>👥 Jogadores Pagos:</span>
+                                                <span className="font-semibold">{dadosRelatorio.jogadoresPagos}/{dadosRelatorio.totalJogadores}</span>
+                                            </div>
+                                            <div className="w-full bg-gray-200 rounded-full h-2">
+                                                <div className="bg-green-500 h-2 rounded-full" style={{ width: `${dadosRelatorio.percentualPagos}%` }}></div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                );
+            };
+
+            const ModalConfiguracoes = () => (
+                <div className="fixed inset-0 modal-overlay flex items-center justify-center z-50 p-4" onClick={() => setMostrarConfig(false)}>
+                    <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+                        <div className="bg-gradient-to-r from-blue-600 to-purple-600 px-6 py-4 sticky top-0">
+                            <h2 className="text-xl font-semibold text-white">⚙️ Configurações</h2>
+                        </div>
+                        <div className="p-6 space-y-4">
+                            <div>
+                                <label className="block text-sm mb-1">Nome do Time</label>
+                                <input type="text" value={configuracoes.nomeTime} onChange={(e) => setConfiguracoes({...configuracoes, nomeTime: e.target.value})} className="w-full px-4 py-2 border rounded-lg" />
+                            </div>
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label className="block text-sm mb-1">Valor Mensal (R$)</label>
+                                    <input type="number" value={configuracoes.valorMensal} onChange={(e) => setConfiguracoes({...configuracoes, valorMensal: parseFloat(e.target.value)})} className="w-full px-4 py-2 border rounded-lg" />
+                                </div>
+                                <div>
+                                    <label className="block text-sm mb-1">Valor Avulso (R$)</label>
+                                    <input type="number" value={configuracoes.valorAvulso} onChange={(e) => setConfiguracoes({...configuracoes, valorAvulso: parseFloat(e.target.value)})} className="w-full px-4 py-2 border rounded-lg" />
+                                </div>
+                            </div>
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label className="block text-sm mb-1">Dia Vencimento</label>
+                                    <input type="number" value={configuracoes.diaVencimento} onChange={(e) => setConfiguracoes({...configuracoes, diaVencimento: parseInt(e.target.value)})} className="w-full px-4 py-2 border rounded-lg" />
+                                </div>
+                                <div>
+                                    <label className="block text-sm mb-1">Telefone Admin</label>
+                                    <input type="text" value={configuracoes.telefoneAdmin} onChange={(e) => setConfiguracoes({...configuracoes, telefoneAdmin: e.target.value})} className="w-full px-4 py-2 border rounded-lg" />
+                                </div>
+                            </div>
+                            <div>
+                                <label className="block text-sm mb-1">Chave PIX</label>
+                                <input type="text" value={configuracoes.pixKey} onChange={(e) => setConfiguracoes({...configuracoes, pixKey: e.target.value})} className="w-full px-4 py-2 border rounded-lg" />
+                            </div>
+                            <button onClick={() => { setMostrarConfig(false); showMessage("✅ Configurações salvas!"); }} className="w-full py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg font-semibold">
+                                Salvar
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            );
+
+            return (
+                <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
+                    <div className="max-w-7xl mx-auto p-4 md:p-6">
+                        {/* Header */}
+                        <div className="text-center mb-8 animate-slide-in">
+                            <div className="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-br from-blue-500 to-purple-600 rounded-2xl shadow-lg mb-4">
+                                <span className="text-4xl">⚽</span>
+                            </div>
+                            <h1 className="text-3xl md:text-4xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+                                {configuracoes.nomeTime}
+                            </h1>
+                            <p className="text-gray-500 mt-2">Gestão Financeira Completa - Controle Mês a Mês</p>
+                            <div className="text-xs text-gray-400 mt-1">
+                                {MENSALISTAS_FIXOS.length} Mensalistas | {AVULSOS_ROTINEIROS.length} Avulsos Rotineiros
+                            </div>
+                        </div>
+
+                        {/* Barra de ferramentas */}
+                        <div className="flex flex-wrap justify-between items-center gap-4 mb-6">
+                            <div className="flex gap-2">
+                                <button onClick={() => setMostrarConfig(true)} className="px-4 py-2 bg-gray-800 text-white rounded-lg">⚙️ Config</button>
+                                <button onClick={() => setMostrarRelatorio(true)} className="px-4 py-2 bg-blue-600 text-white rounded-lg animate-pulse-custom">📊 Relatório</button>
+                            </div>
+                            <div className="flex items-center gap-4 bg-white rounded-lg shadow p-2">
+                                <button onClick={() => {
+                                    let novoMes = mesSelecionado - 1;
+                                    let novoAno = anoSelecionado;
+                                    if (novoMes < 0) { novoMes = 11; novoAno--; }
+                                    setMesSelecionado(novoMes);
+                                    setAnoSelecionado(novoAno);
+                                }} className="px-3 py-1 bg-gray-200 rounded-lg">◀</button>
+                                <select value={anoSelecionado} onChange={(e) => setAnoSelecionado(parseInt(e.target.value))} className="px-3 py-1 border rounded">
+                                    {[2023,2024,2025,2026].map(ano => <option key={ano} value={ano}>{ano}</option>)}
+                                </select>
+                                <select value={mesSelecionado} onChange={(e) => setMesSelecionado(parseInt(e.target.value))} className="px-3 py-1 border rounded">
+                                    {meses.map((mes, idx) => <option key={idx} value={idx}>{mes}</option>)}
+                                </select>
+                                <button onClick={() => {
+                                    let novoMes = mesSelecionado + 1;
+                                    let novoAno = anoSelecionado;
+                                    if (novoMes > 11) { novoMes = 0; novoAno++; }
+                                    setMesSelecionado(novoMes);
+                                    setAnoSelecionado(novoAno);
+                                }} className="px-3 py-1 bg-gray-200 rounded-lg">▶</button>
+                            </div>
+                        </div>
+
+                        {/* Status do Mês */}
+                        <div className={`mb-6 p-3 rounded-lg text-center ${dadosAtuais.fechado ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}`}>
+                            {dadosAtuais.fechado ? `🔒 Mês FECHADO - ${meses[mesSelecionado]}/${anoSelecionado}` : `📝 Mês ABERTO - ${meses[mesSelecionado]}/${anoSelecionado}`}
+                            {!dadosAtuais.fechado && dadosAtuais.jogadores?.length === 0 && (
+                                <button onClick={adicionarTodosMensalistas} className="ml-4 px-3 py-1 bg-blue-500 text-white rounded text-sm">
+                                    📋 Carregar Mensalistas
+                                </button>
+                            )}
+                        </div>
+
+                        {/* Cards de Resumo */}
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+                            <div className="bg-white rounded-2xl shadow-lg p-6 border-l-4 border-green-500">
+                                <p className="text-gray-500 text-sm">Total Recebido</p>
+                                <p className="text-3xl font-bold text-green-600">R$ {totalRecebido}</p>
+                                <p className="text-xs text-gray-400">Meta: R$ {totalReceber}</p>
+                            </div>
+                            <div className="bg-white rounded-2xl shadow-lg p-6 border-l-4 border-red-500">
+                                <p className="text-gray-500 text-sm">Despesas Pagas</p>
+                                <p className="text-3xl font-bold text-red-600">R$ {totalDespesas}</p>
+                            </div>
+                            <div className="bg-white rounded-2xl shadow-lg p-6 border-l-4 border-blue-500">
+                                <p className="text-gray-500 text-sm">A Receber</p>
+                                <p className="text-3xl font-bold text-blue-600">R$ {totalReceber - totalRecebido}</p>
+                            </div>
+                            <div className={`bg-white rounded-2xl shadow-lg p-6 border-l-4 ${saldoFinal >= 0 ? 'border-purple-500' : 'border-orange-500'}`}>
+                                <p className="text-gray-500 text-sm">Saldo</p>
+                                <p className={`text-3xl font-bold ${saldoFinal >= 0 ? 'text-purple-600' : 'text-orange-600'}`}>R$ {saldoFinal}</p>
+                            </div>
+                        </div>
+
+                        {/* Mensagem de feedback */}
+                        {mensagem.show && (
+                            <div className={`mb-6 p-4 rounded-lg animate-slide-in ${mensagem.type === "error" ? "bg-red-50 border-red-200 text-red-700" : "bg-green-50 border-green-200 text-green-700"}`}>
+                                {mensagem.text}
+                            </div>
+                        )}
+
+                        {/* Abas */}
+                        <div className="flex gap-2 mb-6 border-b border-gray-200">
+                            <button onClick={() => setAbaAtiva("receitas")} className={`px-6 py-3 rounded-t-lg font-semibold transition-all ${abaAtiva === "receitas" ? "bg-gradient-to-r from-blue-600 to-purple-600 text-white" : "bg-gray-100"}`}>📊 Receitas</button>
+                            <button onClick={() => setAbaAtiva("despesas")} className={`px-6 py-3 rounded-t-lg font-semibold transition-all ${abaAtiva === "despesas" ? "bg-gradient-to-r from-blue-600 to-purple-600 text-white" : "bg-gray-100"}`}>💸 Despesas</button>
+                        </div>
+
+                        {/* Conteúdo Receitas */}
+                        {abaAtiva === "receitas" && (
+                            <>
+                                <div className="bg-white rounded-2xl shadow-lg p-6 mb-8">
+                                    <h2 className="text-xl font-semibold mb-4">➕ Adicionar Jogador</h2>
+                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                                        <input type="text" placeholder="Nome" value={nome} onChange={(e) => setNome(e.target.value)} className="px-4 py-2 border rounded-lg" disabled={dadosAtuais.fechado} />
+                                        <input type="text" placeholder="Telefone" value={telefone} onChange={(e) => setTelefone(e.target.value)} className="px-4 py-2 border rounded-lg" disabled={dadosAtuais.fechado} />
+                                        <select value={tipo} onChange={(e) => setTipo(e.target.value)} className="px-4 py-2 border rounded-lg" disabled={dadosAtuais.fechado}>
+                                            <option value="mensal">Mensalista - R$ {configuracoes.valorMensal}</option>
+                                            <option value="avulso">Avulso - R$ {configuracoes.valorAvulso}</option>
+                                        </select>
+                                        <button onClick={adicionarJogador} disabled={dadosAtuais.fechado} className="md:col-span-3 px-6 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg disabled:opacity-50">Adicionar</button>
+                                    </div>
+                                </div>
+
+                                <div className="bg-white rounded-2xl shadow-lg p-6 mb-8">
+                                    <div className="flex flex-col md:flex-row gap-4 justify-between">
+                                        <div className="flex gap-2 flex-wrap">
+                                            <button onClick={() => setFiltro("todos")} className={`px-3 py-1 rounded ${filtro === "todos" ? "bg-blue-600 text-white" : "bg-gray-100"}`}>Todos ({dadosAtuais.jogadores?.length || 0})</button>
+                                            <button onClick={() => setFiltro("mensal")} className={`px-3 py-1 rounded ${filtro === "mensal" ? "bg-blue-600 text-white" : "bg-gray-100"}`}>Mensalistas</button>
+                                            <button onClick={() => setFiltro("avulso")} className={`px-3 py-1 rounded ${filtro === "avulso" ? "bg-blue-600 text-white" : "bg-gray-100"}`}>Avulsos</button>
+                                            <button onClick={() => setFiltro("pagos")} className={`px-3 py-1 rounded ${filtro === "pagos" ? "bg-green-600 text-white" : "bg-gray-100"}`}>Pagos</button>
+                                            <button onClick={() => setFiltro("pendentes")} className={`px-3 py-1 rounded ${filtro === "pendentes" ? "bg-orange-600 text-white" : "bg-gray-100"}`}>Pendentes</button>
+                                        </div>
+                                        <input type="text" placeholder="Buscar..." value={busca} onChange={(e) => setBusca(e.target.value)} className="px-4 py-2 border rounded-lg w-full md:w-64" />
+                                    </div>
+                                </div>
+
+                                <div className="bg-white rounded-2xl shadow-lg overflow-hidden">
+                                    <div className="bg-gradient-to-r from-blue-600 to-purple-600 px-6 py-4">
+                                        <h2 className="text-xl font-semibold text-white">📋 Jogadores - {meses[mesSelecionado]}/{anoSelecionado}</h2>
+                                    </div>
+                                    <div className="divide-y divide-gray-200 max-h-96 overflow-y-auto">
+                                        {jogadoresFiltrados.length === 0 ? (
+                                            <div className="text-center py-12">
+                                                <p className="text-gray-400">Nenhum jogador encontrado</p>
+                                                {dadosAtuais.jogadores?.length === 0 && (
+                                                    <button onClick={adicionarTodosMensalistas} className="mt-4 px-4 py-2 bg-blue-500 text-white rounded-lg">
+                                                        📋 Carregar Lista de Mensalistas
+                                                    </button>
+                                                )}
+                                            </div>
+                                        ) : (
+                                            jogadoresFiltrados.map((j) => (
+                                                <div key={j.id} className="p-4 hover:bg-gray-50">
+                                                    <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+                                                        <div className="flex-1">
+                                                            <div className="flex items-center gap-2 flex-wrap">
+                                                                <span className="font-semibold text-gray-800">{j.nome}</span>
+                                                                <span className={`text-xs px-2 py-1 rounded-full ${j.tipo === "mensal" ? "bg-blue-100 text-blue-700" : "bg-purple-100 text-purple-700"}`}>
+                                                                    {j.tipo === "mensal" ? "Mensalista" : "Avulso"}
+                                                                </span>
+                                                                <span className="text-sm text-gray-600">
+                                                                    R$ {j.tipo === "mensal" ? configuracoes.valorMensal : configuracoes.valorAvulso}
+                                                                </span>
+                                                                {j.telefone ? (
+                                                                    <span className="text-xs text-green-600">📱 {j.telefone}</span>
+                                                                ) : (
+                                                                    <span className="text-xs text-red-400">⚠️ Sem telefone</span>
+                                                                )}
+                                                                {j.dataPagamento && (
+                                                                    <span className="text-xs text-gray-400">🗓️ Pago em {j.dataPagamento}</span>
+                                                                )}
+                                                            </div>
+                                                        </div>
+                                                        <div className="flex gap-2">
+                                                            <input 
+                                                                type="text" 
+                                                                placeholder="Telefone" 
+                                                                value={j.telefone || ""} 
+                                                                onChange={(e) => atualizarTelefone(j.id, e.target.value)} 
+                                                                className="px-2 py-1 text-sm border rounded w-32"
+                                                                disabled={dadosAtuais.fechado}
+                                                            />
+                                                            <button onClick={() => removerJogador(j.id)} disabled={dadosAtuais.fechado} className="px-3 py-1 bg-red-500 text-white rounded text-sm disabled:opacity-50">🗑️</button>
+                                                            {!j.pago && j.tipo === "mensal" && (
+                                                                <button onClick={() => enviarCobrancaMensal(j)} className="px-3 py-1 bg-green-500 text-white rounded text-sm">📱 Cobrar</button>
+                                                            )}
+                                                            {!j.pago && j.tipo === "avulso" && (
+                                                                <button onClick={() => enviarCobrancaAvulso(j)} className="px-3 py-1 bg-orange-500 text-white rounded text-sm">📱 Cobrar</button>
+                                                            )}
+                                                            <button onClick={() => togglePagamento(j.id)} disabled={dadosAtuais.fechado} className={`px-3 py-1 rounded text-sm ${j.pago ? "bg-green-500 text-white" : "bg-gray-200"} disabled:opacity-50`}>
+                                                                {j.pago ? "Pago" : "Pendente"}
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            ))
+                                        )}
+                                    </div>
+                                </div>
+                            </>
+                        )}
+
+                        {/* Conteúdo Despesas */}
+                        {abaAtiva === "despesas" && (
+                            <>
+                                <div className="bg-white rounded-2xl shadow-lg p-6 mb-8">
+                                    <h2 className="text-xl font-semibold mb-4">💸 Adicionar Despesa</h2>
+                                    <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+                                        <input type="text" placeholder="Nome" value={novaDespesa.nome} onChange={(e) => setNovaDespesa({...novaDespesa, nome: e.target.value})} className="px-4 py-2 border rounded-lg" disabled={dadosAtuais.fechado} />
+                                        <input type="number" placeholder="Valor" value={novaDespesa.valor} onChange={(e) => setNovaDespesa({...novaDespesa, valor: e.target.value})} className="px-4 py-2 border rounded-lg" disabled={dadosAtuais.fechado} />
+                                        <select value={novaDespesa.categoria} onChange={(e) => setNovaDespesa({...novaDespesa, categoria: e.target.value})} className="px-4 py-2 border rounded-lg" disabled={dadosAtuais.fechado}>
+                                            <option value="estrutura">🏟️ Locação da Quadra</option>
+                                            <option value="serviços">🧤 Goleiro</option>
+                                            <option value="manutenção">👕 Lavagem Uniforme</option>
+                                            <option value="outros">📝 Outros</option>
+                                        </select>
+                                        <button onClick={adicionarDespesa} disabled={dadosAtuais.fechado} className="px-6 py-2 bg-gradient-to-r from-red-600 to-orange-600 text-white rounded-lg disabled:opacity-50">Adicionar</button>
+                                    </div>
+                                </div>
+
+                                <div className="bg-white rounded-2xl shadow-lg p-6 mb-8">
+                                    <div className="flex gap-2">
+                                        <button onClick={() => setFiltroDespesa("todas")} className={`px-3 py-1 rounded ${filtroDespesa === "todas" ? "bg-blue-600 text-white" : "bg-gray-100"}`}>Todas</button>
+                                        <button onClick={() => setFiltroDespesa("pagas")} className={`px-3 py-1 rounded ${filtroDespesa === "pagas" ? "bg-green-600 text-white" : "bg-gray-100"}`}>Pagas</button>
+                                        <button onClick={() => setFiltroDespesa("pendentes")} className={`px-3 py-1 rounded ${filtroDespesa === "pendentes" ? "bg-orange-600 text-white" : "bg-gray-100"}`}>Pendentes</button>
+                                    </div>
+                                </div>
+
+                                <div className="bg-white rounded-2xl shadow-lg overflow-hidden">
+                                    <div className="bg-gradient-to-r from-red-600 to-orange-600 px-6 py-4">
+                                        <h2 className="text-xl font-semibold text-white">📋 Despesas</h2>
+                                    </div>
+                                    <div className="divide-y divide-gray-200 max-h-96 overflow-y-auto">
+                                        {despesasFiltradas.length === 0 ? (
+                                            <div className="text-center py-12"><p className="text-gray-400">Nenhuma despesa</p></div>
+                                        ) : (
+                                            despesasFiltradas.map((d) => (
+                                                <div key={d.id} className="p-4 hover:bg-gray-50">
+                                                    <div className="flex justify-between items-center flex-wrap gap-2">
+                                                        <div>
+                                                            <span className="font-semibold">{d.nome}</span>
+                                                            <span className="text-xs ml-2 px-2 py-1 rounded-full bg-gray-100">{categorias[d.categoria]}</span>
+                                                            <span className="text-sm ml-2 text-red-600 font-bold">R$ {d.valor}</span>
+                                                            {d.dataPagamento && <span className="text-xs ml-2 text-green-600">✅ {d.dataPagamento}</span>}
+                                                        </div>
+                                                        <div className="flex gap-2">
+                                                            <button onClick={() => removerDespesa(d.id)} disabled={dadosAtuais.fechado} className="px-3 py-1 bg-red-500 text-white rounded text-sm disabled:opacity-50">🗑️</button>
+                                                            <button onClick={() => togglePagamentoDespesa(d.id)} disabled={dadosAtuais.fechado} className={`px-3 py-1 rounded text-sm ${d.pago ? "bg-green-500 text-white" : "bg-gray-200"} disabled:opacity-50`}>
+                                                                {d.pago ? "Paga" : "Pendente"}
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            ))
+                                        )}
+                                    </div>
+                                </div>
+                            </>
+                        )}
+
+                        <div className="mt-8 text-center text-sm text-gray-400">
+                            <p>💡 Dados salvos automaticamente | 📊 Gere relatórios em PDF | 📱 Compartilhe via WhatsApp</p>
+                            <p className="mt-1">👥 {MENSALISTAS_FIXOS.length} Mensalistas Fixos | {AVULSOS_ROTINEIROS.length} Avulsos Rotineiros</p>
+                        </div>
+                    </div>
+
+                    {mostrarConfig && <ModalConfiguracoes />}
+                    {mostrarRelatorio && <ModalRelatorio />}
+                </div>
+            );
+        }
+
+        ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+    </script>
+</body>
+</html>

@@ -1,0 +1,57 @@
+{% extends 'base.html' %}
+{% block title %}{{ settings.team_name if settings else 'Amigos da Squadra' }}{% endblock %}
+{% block public_content %}
+<section class="public-hero">
+    <div class="container py-5">
+        <div class="row align-items-end g-4">
+            <div class="col-lg-7">
+                <div class="eyebrow text-light">Amigos da Squadra</div>
+                <h1 class="display-4 fw-semibold text-white">Organização financeira, presença e calendário do time em um só lugar.</h1>
+                <p class="lead text-light opacity-75">{{ settings.public_home_text if settings and settings.public_home_text else 'Controle completo de mensalistas, avulsos, despesas e cobranças.' }}</p>
+                <div class="d-flex gap-3 flex-wrap">
+                    <a href="{{ url_for('auth.login') }}" class="btn btn-warning">Entrar no painel</a>
+                    <a href="#proximos-jogos" class="btn btn-outline-light">Próximos jogos</a>
+                </div>
+            </div>
+            <div class="col-lg-5">
+                <div class="public-panel">
+                    <div class="mini-stat">
+                        <span>Mensalidade padrão</span>
+                        <strong>{{ currency(settings.monthly_fee_default if settings else 65) }}</strong>
+                    </div>
+                    <div class="mini-stat">
+                        <span>Valor avulso</span>
+                        <strong>{{ currency(settings.single_match_fee_default if settings else 30) }}</strong>
+                    </div>
+                    <div class="mini-stat">
+                        <span>PIX</span>
+                        <strong>{{ settings.pix_key if settings else 'time@pix.com' }}</strong>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+<section class="container py-5" id="proximos-jogos">
+    <div class="section-header">
+        <h2>Próximos jogos</h2>
+        <p>Agenda pública com as próximas partidas cadastradas no sistema.</p>
+    </div>
+    <div class="row g-3">
+        {% for match in next_matches %}
+            <div class="col-md-6 col-xl-3">
+                <div class="content-card h-100">
+                    <div class="small text-secondary">{{ match.starts_at.strftime('%d/%m/%Y %H:%M') }}</div>
+                    <h3 class="h5 mt-2">{{ match.title }}</h3>
+                    <div>{{ match.opponent or 'Adversário a definir' }}</div>
+                    <div class="text-secondary small mt-2">{{ match.location or 'Local a definir' }}</div>
+                </div>
+            </div>
+        {% else %}
+            <div class="col-12">
+                <div class="content-card">Nenhuma partida futura cadastrada.</div>
+            </div>
+        {% endfor %}
+    </div>
+</section>
+{% endblock %}

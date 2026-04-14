@@ -1,0 +1,32 @@
+{% extends 'base.html' %}
+{% block page_title %}Categorias de despesas{% endblock %}
+{% block content %}
+<div class="row g-4">
+    <div class="col-lg-4">
+        <div class="content-card">
+            <form method="post">
+                {{ form.hidden_tag() }}
+                <div class="mb-3">{{ form.name.label(class="form-label") }}{{ form.name(class="form-control") }}</div>
+                <div class="mb-3">{{ form.description.label(class="form-label") }}{{ form.description(class="form-control") }}</div>
+                {{ form.submit(class="btn btn-primary") }}
+            </form>
+        </div>
+    </div>
+    <div class="col-lg-8">
+        <div class="content-card">
+            <div class="table-responsive">
+                <table class="table">
+                    <thead><tr><th>Categoria</th><th>Descrição</th></tr></thead>
+                    <tbody>
+                    {% for item in categories %}
+                        <tr><td>{{ item.name }}</td><td>{{ item.description or '-' }}</td></tr>
+                    {% else %}
+                        <tr><td colspan="2" class="text-secondary">Nenhuma categoria cadastrada.</td></tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,51 @@
+{% extends 'base.html' %}
+{% block page_title %}{{ player.name }}{% endblock %}
+{% block content %}
+<div class="row g-4">
+    <div class="col-lg-4">
+        <div class="content-card">
+            {% if player.photo_path %}
+                <img class="player-photo mb-3" src="{{ url_for('static', filename=player.photo_path) }}" alt="{{ player.name }}">
+            {% endif %}
+            <h2 class="h4">{{ player.nickname or player.name }}</h2>
+            <div class="text-secondary">{{ player.position or 'Posição não informada' }}</div>
+            <div class="mt-3 small">Telefone: {{ player.phone or '-' }}</div>
+            <div class="small">Tipo: {{ player.player_type }}</div>
+            <div class="small">Status: {{ player.status }}</div>
+            <a class="btn btn-outline-primary mt-3" href="{{ url_for('players.edit', player_id=player.id) }}">Editar</a>
+        </div>
+    </div>
+    <div class="col-lg-8">
+        <div class="content-card mb-4">
+            <h2 class="h5">Histórico de pagamentos</h2>
+            <div class="table-responsive">
+                <table class="table">
+                    <thead><tr><th>Referência</th><th>Vencimento</th><th>Status</th><th>Pago</th></tr></thead>
+                    <tbody>
+                    {% for item in player.payments|sort(attribute='created_at', reverse=True) %}
+                        <tr><td>{{ '%02d'|format(item.reference_month) }}/{{ item.reference_year }}</td><td>{{ item.due_date.strftime('%d/%m/%Y') }}</td><td>{{ item.status }}</td><td>{{ currency(item.amount_paid) }}</td></tr>
+                    {% else %}
+                        <tr><td colspan="4" class="text-secondary">Sem pagamentos.</td></tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        <div class="content-card">
+            <h2 class="h5">Histórico de presença</h2>
+            <div class="table-responsive">
+                <table class="table">
+                    <thead><tr><th>Partida</th><th>Data</th><th>Status</th></tr></thead>
+                    <tbody>
+                    {% for item in player.attendances|sort(attribute='created_at', reverse=True) %}
+                        <tr><td>{{ item.match.title }}</td><td>{{ item.match.starts_at.strftime('%d/%m/%Y %H:%M') }}</td><td>{{ item.status }}</td></tr>
+                    {% else %}
+                        <tr><td colspan="3" class="text-secondary">Sem presenças.</td></tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

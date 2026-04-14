@@ -1,0 +1,36 @@
+{% extends 'base.html' %}
+{% block page_title %}Relatórios{% endblock %}
+{% block content %}
+<div class="content-card mb-4">
+    <form class="row g-3 align-items-end" method="get">
+        <div class="col-md-3"><label class="form-label">Ano</label><input class="form-control" type="number" name="ano" value="{{ year }}"></div>
+        <div class="col-md-5"><label class="form-label">Jogador</label><select class="form-select" name="jogador"><option value="">Todos</option>{% for player in players %}<option value="{{ player.id }}" {% if player_id == player.id %}selected{% endif %}>{{ player.name }}</option>{% endfor %}</select></div>
+        <div class="col-md-4 d-flex gap-2">
+            <button class="btn btn-outline-primary">Filtrar</button>
+            <a class="btn btn-primary" href="{{ url_for('reports.export_pdf', ano=year) }}">PDF</a>
+        </div>
+    </form>
+</div>
+<div class="row g-3 mb-4">
+    <div class="col-md-6 col-xl-3"><div class="metric-card"><span>Recebido</span><strong>{{ currency(summary.received) }}</strong></div></div>
+    <div class="col-md-6 col-xl-3"><div class="metric-card"><span>Previsto</span><strong>{{ currency(summary.due) }}</strong></div></div>
+    <div class="col-md-6 col-xl-3"><div class="metric-card"><span>Despesas</span><strong>{{ currency(summary.expenses) }}</strong></div></div>
+    <div class="col-md-6 col-xl-3"><div class="metric-card"><span>Inadimplência</span><strong>{{ summary.late }}</strong></div></div>
+</div>
+<div class="content-card">
+    <h2 class="h5">Fluxo de caixa e inadimplência</h2>
+    <div class="table-responsive">
+        <table class="table align-middle">
+            <thead><tr><th>Jogador</th><th>Referência</th><th>Devido</th><th>Pago</th><th>Status</th></tr></thead>
+            <tbody>
+            {% for item in payments %}
+                <tr><td>{{ item.player.name }}</td><td>{{ '%02d'|format(item.reference_month) }}/{{ item.reference_year }}</td><td>{{ currency(item.amount_due) }}</td><td>{{ currency(item.amount_paid) }}</td><td>{{ item.status }}</td></tr>
+            {% else %}
+                <tr><td colspan="5" class="text-secondary">Sem dados para o filtro.</td></tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}
+

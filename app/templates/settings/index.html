@@ -1,0 +1,80 @@
+{% extends 'base.html' %}
+{% block page_title %}Configurações{% endblock %}
+{% block content %}
+<div class="row g-4">
+    <div class="col-xl-7">
+        <div class="content-card">
+            <h2 class="h5 mb-3">Configurações do time</h2>
+            <form method="post" enctype="multipart/form-data" class="row g-3">
+                {{ form.hidden_tag() }}
+                <div class="col-md-6">{{ form.team_name.label(class="form-label") }}{{ form.team_name(class="form-control") }}</div>
+                <div class="col-md-6">{{ form.logo.label(class="form-label") }}{{ form.logo(class="form-control") }}</div>
+                <div class="col-md-3">{{ form.primary_color.label(class="form-label") }}{{ form.primary_color(class="form-control") }}</div>
+                <div class="col-md-3">{{ form.secondary_color.label(class="form-label") }}{{ form.secondary_color(class="form-control") }}</div>
+                <div class="col-md-3">{{ form.monthly_fee_default.label(class="form-label") }}{{ form.monthly_fee_default(class="form-control") }}</div>
+                <div class="col-md-3">{{ form.single_match_fee_default.label(class="form-label") }}{{ form.single_match_fee_default(class="form-control") }}</div>
+                <div class="col-md-6">{{ form.pix_key.label(class="form-label") }}{{ form.pix_key(class="form-control") }}</div>
+                <div class="col-md-6">{{ form.admin_phone.label(class="form-label") }}{{ form.admin_phone(class="form-control") }}</div>
+                <div class="col-12">{{ form.billing_message_template.label(class="form-label") }}{{ form.billing_message_template(class="form-control", rows="4") }}</div>
+                <div class="col-12">{{ form.match_message_template.label(class="form-label") }}{{ form.match_message_template(class="form-control", rows="4") }}</div>
+                <div class="col-12">{{ form.public_home_text.label(class="form-label") }}{{ form.public_home_text(class="form-control", rows="3") }}</div>
+                <div class="col-12">{{ form.submit(class="btn btn-primary") }}</div>
+            </form>
+        </div>
+    </div>
+    <div class="col-xl-5">
+        <div class="content-card mb-4">
+            <h2 class="h5 mb-3">Usuários</h2>
+            {% if current_user.role == 'admin' %}
+            <form method="post" action="{{ url_for('settings.create_user') }}" class="row g-3 mb-4">
+                {{ user_form.hidden_tag() }}
+                <div class="col-md-6">{{ user_form.name.label(class="form-label") }}{{ user_form.name(class="form-control") }}</div>
+                <div class="col-md-6">{{ user_form.email.label(class="form-label") }}{{ user_form.email(class="form-control") }}</div>
+                <div class="col-md-6">{{ user_form.password.label(class="form-label") }}{{ user_form.password(class="form-control") }}</div>
+                <div class="col-md-6">{{ user_form.role.label(class="form-label") }}{{ user_form.role(class="form-select") }}</div>
+                <div class="col-12"><button class="btn btn-outline-primary">Criar usuário</button></div>
+            </form>
+            {% endif %}
+            <div class="table-responsive">
+                <table class="table">
+                    <thead><tr><th>Nome</th><th>E-mail</th><th>Perfil</th></tr></thead>
+                    <tbody>{% for user in users %}<tr><td>{{ user.name }}</td><td>{{ user.email }}</td><td>{{ user.role }}</td></tr>{% endfor %}</tbody>
+                </table>
+            </div>
+        </div>
+        <div class="content-card mb-4">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h2 class="h5 mb-0">Backups</h2>
+                {% if current_user.role == 'admin' %}
+                <form method="post" action="{{ url_for('settings.backup') }}">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <button class="btn btn-dark btn-sm">Gerar backup</button>
+                </form>
+                {% endif %}
+            </div>
+            <ul class="list-group list-group-flush">
+                {% for backup in backups %}
+                    <li class="list-group-item px-0 d-flex justify-content-between"><span>{{ backup.name }}</span><a href="{{ url_for('settings.download_backup', filename=backup.name) }}">Baixar</a></li>
+                {% else %}
+                    <li class="list-group-item px-0 text-secondary">Nenhum backup gerado.</li>
+                {% endfor %}
+            </ul>
+        </div>
+        <div class="content-card">
+            <h2 class="h5 mb-3">Tentativas de login</h2>
+            <div class="table-responsive">
+                <table class="table">
+                    <thead><tr><th>E-mail</th><th>IP</th><th>Status</th></tr></thead>
+                    <tbody>
+                    {% for item in login_attempts %}
+                        <tr><td>{{ item.email }}</td><td>{{ item.ip_address }}</td><td>{{ 'Sucesso' if item.success else 'Falha' }}</td></tr>
+                    {% else %}
+                        <tr><td colspan="3" class="text-secondary">Sem registros.</td></tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

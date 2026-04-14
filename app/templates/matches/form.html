@@ -1,0 +1,18 @@
+{% extends 'base.html' %}
+{% block page_title %}{{ title }}{% endblock %}
+{% block content %}
+<div class="content-card">
+    <form method="post" class="row g-3">
+        {{ form.hidden_tag() }}
+        <div class="col-md-6">{{ form.title.label(class="form-label") }}{{ form.title(class="form-control") }}</div>
+        <div class="col-md-6">{{ form.opponent.label(class="form-label") }}{{ form.opponent(class="form-control") }}</div>
+        <div class="col-md-6">{{ form.location.label(class="form-label") }}{{ form.location(class="form-control") }}</div>
+        <div class="col-md-3">{{ form.starts_at.label(class="form-label") }}{{ form.starts_at(class="form-control") }}</div>
+        <div class="col-md-3">{{ form.confirmation_deadline.label(class="form-label") }}{{ form.confirmation_deadline(class="form-control") }}</div>
+        <div class="col-md-3">{{ form.game_fee.label(class="form-label") }}{{ form.game_fee(class="form-control") }}</div>
+        <div class="col-12">{{ form.notes.label(class="form-label") }}{{ form.notes(class="form-control", rows="4") }}</div>
+        <div class="col-12">{{ form.submit(class="btn btn-primary") }}</div>
+    </form>
+</div>
+{% endblock %}
+

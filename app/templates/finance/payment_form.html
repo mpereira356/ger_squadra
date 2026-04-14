@@ -1,0 +1,25 @@
+{% extends 'base.html' %}
+{% block page_title %}{{ title }}{% endblock %}
+{% block content %}
+<div class="content-card">
+    <form method="post" enctype="multipart/form-data" class="row g-3">
+        {{ form.hidden_tag() }}
+        <div class="col-md-6">{{ form.player_id.label(class="form-label") }}{{ form.player_id(class="form-select") }}</div>
+        <div class="col-md-3">{{ form.reference_month.label(class="form-label") }}{{ form.reference_month(class="form-control") }}</div>
+        <div class="col-md-3">{{ form.reference_year.label(class="form-label") }}{{ form.reference_year(class="form-control") }}</div>
+        <div class="col-md-4">{{ form.due_date.label(class="form-label") }}{{ form.due_date(class="form-control") }}</div>
+        <div class="col-md-4">{{ form.amount_due.label(class="form-label") }}{{ form.amount_due(class="form-control") }}</div>
+        <div class="col-md-4">{{ form.amount_paid.label(class="form-label") }}{{ form.amount_paid(class="form-control") }}</div>
+        <div class="col-md-4">{{ form.discount.label(class="form-label") }}{{ form.discount(class="form-control") }}</div>
+        <div class="col-md-4">{{ form.fine.label(class="form-label") }}{{ form.fine(class="form-control") }}</div>
+        <div class="col-md-4">{{ form.interest.label(class="form-label") }}{{ form.interest(class="form-control") }}</div>
+        <div class="col-md-4">{{ form.payment_method.label(class="form-label") }}{{ form.payment_method(class="form-select") }}</div>
+        <div class="col-md-4">{{ form.status.label(class="form-label") }}{{ form.status(class="form-select") }}</div>
+        <div class="col-md-4">{{ form.paid_at.label(class="form-label") }}{{ form.paid_at(class="form-control") }}</div>
+        <div class="col-md-6">{{ form.receipt.label(class="form-label") }}{{ form.receipt(class="form-control") }}</div>
+        <div class="col-12">{{ form.notes.label(class="form-label") }}{{ form.notes(class="form-control", rows="4") }}</div>
+        <div class="col-12">{{ form.submit(class="btn btn-primary") }}</div>
+    </form>
+</div>
+{% endblock %}
+

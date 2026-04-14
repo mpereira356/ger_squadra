@@ -1,0 +1,83 @@
+{% extends 'base.html' %}
+{% block page_title %}Financeiro{% endblock %}
+{% block content %}
+<div class="row g-3 mb-4">
+    <div class="col-md-6 col-xl-3"><div class="metric-card"><span>Recebido</span><strong>{{ currency(totals.received) }}</strong></div></div>
+    <div class="col-md-6 col-xl-3"><div class="metric-card"><span>Previsto</span><strong>{{ currency(totals.expected) }}</strong></div></div>
+    <div class="col-md-6 col-xl-3"><div class="metric-card"><span>Despesas</span><strong>{{ currency(totals.expenses) }}</strong></div></div>
+    <div class="col-md-6 col-xl-3"><div class="metric-card"><span>Saldo</span><strong>{{ currency(totals.balance) }}</strong></div></div>
+</div>
+<div class="content-card mb-4">
+    <div class="d-flex justify-content-between align-items-center gap-2 flex-wrap">
+        <form class="d-flex gap-2" method="get">
+            <input class="form-control" type="number" name="mes" min="1" max="12" value="{{ month }}">
+            <input class="form-control" type="number" name="ano" value="{{ year }}">
+            <button class="btn btn-outline-primary">Filtrar</button>
+        </form>
+        <div class="d-flex gap-2 flex-wrap">
+            <a class="btn btn-primary" href="{{ url_for('finance.create_payment') }}">Novo pagamento</a>
+            <a class="btn btn-outline-primary" href="{{ url_for('finance.create_expense') }}">Nova despesa</a>
+            <a class="btn btn-outline-secondary" href="{{ url_for('finance.categories') }}">Categorias</a>
+            <a class="btn btn-outline-success" href="{{ url_for('finance.export_excel', mes=month, ano=year) }}">Excel</a>
+            {% if closure.is_closed %}
+                <form method="post" action="{{ url_for('finance.do_reopen', year=year, month=month) }}">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <button class="btn btn-warning">Reabrir mês</button>
+                </form>
+            {% else %}
+                <form method="post" action="{{ url_for('finance.do_close', year=year, month=month) }}">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <button class="btn btn-dark">Fechar mês</button>
+                </form>
+            {% endif %}
+        </div>
+    </div>
+    <div class="small text-secondary mt-3">
+        Status do fechamento: {% if closure.is_closed %}fechado em {{ closure.closed_at.strftime('%d/%m/%Y %H:%M') if closure.closed_at else '' }}{% else %}aberto{% endif %}
+    </div>
+</div>
+<div class="row g-4">
+    <div class="col-xl-7">
+        <div class="content-card">
+            <h2 class="h5">Receitas por jogador</h2>
+            <div class="table-responsive">
+                <table class="table align-middle">
+                    <thead><tr><th>Jogador</th><th>Ref.</th><th>Vencimento</th><th>Status</th><th>Pago</th><th></th></tr></thead>
+                    <tbody>
+                    {% for item in payments %}
+                        <tr>
+                            <td>{{ item.player.name }}</td>
+                            <td>{{ '%02d'|format(item.reference_month) }}/{{ item.reference_year }}</td>
+                            <td>{{ item.due_date.strftime('%d/%m/%Y') }}</td>
+                            <td>{{ item.status }}</td>
+                            <td>{{ currency(item.amount_paid) }}</td>
+                            <td><a class="btn btn-sm btn-outline-success" href="{{ url_for('finance.charge_player', payment_id=item.id) }}">WhatsApp</a></td>
+                        </tr>
+                    {% else %}
+                        <tr><td colspan="6" class="text-secondary">Sem pagamentos no período.</td></tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    <div class="col-xl-5">
+        <div class="content-card">
+            <h2 class="h5">Despesas do período</h2>
+            <div class="table-responsive">
+                <table class="table align-middle">
+                    <thead><tr><th>Descrição</th><th>Categoria</th><th>Status</th><th>Valor</th></tr></thead>
+                    <tbody>
+                    {% for item in expenses %}
+                        <tr><td>{{ item.description }}</td><td>{{ item.category.name }}</td><td>{{ item.status }}</td><td>{{ currency(item.amount) }}</td></tr>
+                    {% else %}
+                        <tr><td colspan="4" class="text-secondary">Sem despesas no período.</td></tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
